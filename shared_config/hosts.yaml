@@ -1,0 +1,9 @@
+workload1: 
+  provider: example
+  host: workload.example.com
+  type: workload
+  
+workload2: 
+  provider: example
+  host: workload.example.com
+  type: workload
