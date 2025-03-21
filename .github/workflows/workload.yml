@@ -1,0 +1,118 @@
+name: Workload CI
+
+on:
+  push:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      workloads: ${{ steps.set-matrix.outputs.workloads }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Find workloads
+        id: set-matrix
+        run: |
+          WORKLOADS=$(find workload -mindepth 1 -maxdepth 1 -type d -not -path "*/\.*" | jq -R -s -c 'split("\n") | map(select(length > 0)) | map(split("/") | .[1])')
+          echo "workloads=$WORKLOADS" >> $GITHUB_OUTPUT
+          echo "Found workloads: $WORKLOADS"
+  
+  test:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        workload: ${{ fromJson(needs.discover.outputs.workloads) }}
+      fail-fast: false
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: 'workload/${{ matrix.workload }}/.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'workload/${{ matrix.workload }}/package.json'
+      
+      - name: Install dependencies
+        run: npm install
+        working-directory: workload/${{ matrix.workload }}
+      
+      - name: Run tests
+        run: npm test
+        working-directory: workload/${{ matrix.workload }}
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          directory: workload/${{ matrix.workload }}/coverage
+          flags: ${{ matrix.workload }}
+        if: success()
+
+  docker:
+    permissions:
+      contents: read
+      packages: write
+    needs: [discover, test]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        workload: ${{ fromJson(needs.discover.outputs.workloads) }}
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        
+      - name: Build and export
+        uses: docker/build-push-action@v4
+        with:
+          context: workload/${{ matrix.workload }}
+          load: true
+          tags: ${{ matrix.workload }}:latest
+          
+      - name: Test
+        run: |
+          # Get the default port from the Dockerfile or fall back to 8080
+          PORT=$(grep -o 'ENV PORT=[0-9]*' workload/${{ matrix.workload }}/Dockerfile | cut -d= -f2 || echo 8080)
+          
+          # Run the container
+          docker run -d --name test-container-${{ matrix.workload }} -p $PORT:$PORT ${{ matrix.workload }}:latest
+          
+          # Wait for container to start
+          sleep 5
+          
+          # Test the API
+          curl -s --retry 5 --retry-connrefused http://localhost:$PORT/
+          
+          # Cleanup
+          docker stop test-container-${{ matrix.workload }}
+          
+      - name: Tag for GHCR
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker tag ${{ matrix.workload }}:latest ghcr.io/${{ github.repository_owner }}/workload-${{ matrix.workload }}:latest
+          docker tag ${{ matrix.workload }}:latest ghcr.io/${{ github.repository_owner }}/workload-${{ matrix.workload }}:${{ github.sha }}
+          
+      - name: Push to GitHub Container Registry
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/workload-${{ matrix.workload }}:latest
+          docker push ghcr.io/${{ github.repository_owner }}/workload-${{ matrix.workload }}:latest
