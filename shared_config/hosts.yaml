@@ -1,6 +1,6 @@
 workload1: 
   provider: example
-  host: workload.example.com
+  host: example.com
   type: workload
   
 workload2: 
