@@ -3,7 +3,7 @@ ENV NODE_ENV=production
 # Default port can be overridden with PORT environment variable
 ENV PORT=8080
 
-WORKDIR /app
+WORKDIR /googlecloud
 
 COPY --chown=node:node ["package.json", "package-lock.json", "tsconfig.json", "./"]
 RUN npm install
