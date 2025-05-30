@@ -11,7 +11,7 @@ provider "google" {
 resource "google_iam_workload_identity_pool" "okta_pool" {
   project = var.gcp_project_id
   workload_identity_pool_id = "okta-terraform-pool"
-  display_name              = "Okta Terraform Workload Identity Pool"
+  display_name              = "Okta tf Workload Id Pool"
   description               = "Workload Identity Pool for Okta-authenticated Terraform runs."
   disabled                  = false
 }
