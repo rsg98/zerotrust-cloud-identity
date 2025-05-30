@@ -14,5 +14,6 @@ Use [Workforce Identity](https://cloud.google.com/iam/docs/workforce-identity-fe
 terraform init
 terraform apply -var-file='main.tfvars'
 ```
-4. The sign-in URL is provided as an output variable from Terraform
+4. The sign-in URL is provided as an output variable from Terraform. To authenticate using the ``gcloud`` CLI, generate a login configuration file - see: https://cloud.google.com/sdk/docs/authorizing#auth-wfif
+
 
