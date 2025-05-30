@@ -11,9 +11,8 @@ When('I visit googlecloud workload', async function () {
 });
 
 Then('I see {string} in the googlecloud console', async function (_expectedText: string) {
-  const h1 = page.locator('title').first();
-  const resultText = await h1.textContent();
-  assert(resultText?.includes("Google Cloud console"));
+  const pageTitle = await page.title();
+  assert(pageTitle?.includes("Google Cloud console"));
   // assert(resultText?.includes(_expectedText)); // stubbed out to just hit example.com
 });
 
