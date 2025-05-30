@@ -10,6 +10,55 @@ provider "google" {
   # region  = "your-gcp-region"     # Optional: if not set by environment or gcloud config
 }
 
+# Set top level variables - for production, move to a secret Manager
+variable "gcp_org_id" {
+  type = number
+}
+
+variable "wf_pool_id" {
+  type = string
+}
+
+variable "okta_issuer_uri" {
+  type = string
+}
+
+variable "okta_client_id" {
+  type = string
+}
+
+variable "okta_client_secret" {
+  type = string
+  sensitive = true
+}
+
+# Define the GCP Workforce Identity Pool
+resource "google_iam_workforce_pool" "default" {
+  # Required arguments
+  parent              = format("%s/%s","organizations", var.gcp_org_id)
+  location            = "global"                             # Workforce pools are typically global
+  workforce_pool_id   = var.wf_pool_id
+
+  # Optional arguments
+  display_name        = "My Example Workforce Pool"
+  description         = "This is an example workforce pool managed by Terraform."
+  session_duration    = "7200s"                              # Session duration for tokens issued by this pool (e.g., 2 hours = 7200s). Default is 3600s.
+  disabled            = false                                # Set to true to disable the pool. Default is false.
+
+  # Optional: Access Restrictions
+  # access_restrictions {
+  #   allowed_services {
+  #     domain = "service_domain_to_allow_1" # e.g., "gcp.example.com"
+  #   }
+  #   allowed_services {
+  #     domain = "service_domain_to_allow_2"
+  #   }
+  #   disable_programmatic_signin = false # Set to true to disable programmatic sign-in (e.g., via gcloud or APIs)
+  # }
+
+  #depends_on = [] # Add any explicit dependencies if needed
+}
+
 # Define the GCP Workforce Identity Pool Provider for Okta OIDC
 resource "google_iam_workforce_pool_provider" "okta_oidc_provider" {
   # Required arguments
@@ -24,30 +73,24 @@ resource "google_iam_workforce_pool_provider" "okta_oidc_provider" {
 
   # OIDC specific configuration
   oidc {
-    # Required: The OIDC issuer URI from your Okta application.
-    # Example: "https://your-okta-domain.okta.com" or "https://your-okta-domain.okta.com/oauth2/default"
-    # Replace YOUR_OKTA_DOMAIN with your actual Okta domain.
-    issuer_uri = "https://YOUR_OKTA_DOMAIN.okta.com"
-
-    # Required: The Client ID of the OIDC application configured in Okta.
-    # Replace YOUR_OKTA_OIDC_CLIENT_ID with your actual client ID.
-    client_id = "YOUR_OKTA_OIDC_CLIENT_ID"
+    issuer_uri = var.okta_issuer_uri
+    client_id = var.okta_client_id
 
     # Optional: Client secret for Authorization Code flow (recommended for web sign-in).
     # Store this securely, e.g., using Google Secret Manager or Terraform Cloud variables.
-    # client_secret {
-    #   value {
-    #     plain_text = "YOUR_OKTA_OIDC_CLIENT_SECRET_VALUE" # Replace with your actual client secret
-    #   }
-    # }
+    client_secret {
+      value {
+        plain_text = var.okta_client_secret
+      }
+    }
 
     # Optional: Configuration for web single sign-on (SSO) for console access.
     # Requires client_secret to be configured if using 'CODE' flow.
-    # web_sso_config {
-    #   response_type                 = "CODE" # Or "ID_TOKEN" for implicit flow (less secure)
-    #   assertion_claims_behavior   = "MERGE_USER_INFO_OVER_ID_TOKEN_CLAIMS" # Or "ONLY_ID_TOKEN_CLAIMS"
+    web_sso_config {
+       response_type                 = "CODE" # Or "ID_TOKEN" for implicit flow (less secure)
+       assertion_claims_behavior   = "MERGE_USER_INFO_OVER_ID_TOKEN_CLAIMS" # Or "ONLY_ID_TOKEN_CLAIMS"
     #   additional_scopes           = ["groups", "email", "profile"] # Request additional scopes from Okta if needed
-    # }
+    }
 
     # Optional: JWKS JSON string. If not set, it's fetched from the issuer_uri's .well-known endpoint.
     # jwks_json = file("path/to/your/okta_jwks.json")
@@ -86,6 +129,17 @@ resource "google_iam_workforce_pool_provider" "okta_oidc_provider" {
   ]
 }
 
+# Output the name of the workforce pool (useful for referencing in other resources or outputs)
+output "workforce_pool_name" {
+  description = "The resource name of the created workforce pool."
+  value       = google_iam_workforce_pool.default.name
+}
+
+output "workforce_pool_id_output" {
+  description = "The ID of the created workforce pool."
+  value       = google_iam_workforce_pool.default.workforce_pool_id
+}
+
 # Output the ID of the Workforce Pool Provider
 output "workforce_pool_provider_id_output" {
   description = "The ID of the created workforce pool provider."
@@ -96,3 +150,4 @@ output "workforce_pool_provider_name_output" {
   description = "The resource name of the created workforce pool provider."
   value       = google_iam_workforce_pool_provider.okta_oidc_provider.name
 }
+
