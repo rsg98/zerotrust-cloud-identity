@@ -10,4 +10,5 @@
 terraform init
 terraform apply -var-file='main.tfvars'
 ```
+4. The sign-in URL is provided as an output variable from Terraform
 

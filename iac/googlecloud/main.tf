@@ -151,3 +151,10 @@ output "workforce_pool_provider_name_output" {
   value       = google_iam_workforce_pool_provider.okta_oidc_provider.name
 }
 
+output "workforce_pool_signin_url_output" {
+  description = "Sign-in URL for access to the federated console."
+  value       = format("https://auth.cloud.google/signin/locations/%s/workforcePools/%s/providers/%s?continueUrl=https://console.cloud.google/",
+    google_iam_workforce_pool.default.location, 
+    google_iam_workforce_pool.default.workforce_pool_id,
+    google_iam_workforce_pool_provider.okta_oidc_provider.provider_id )
+}
