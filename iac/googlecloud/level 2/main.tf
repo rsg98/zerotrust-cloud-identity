@@ -51,7 +51,7 @@ resource "google_service_account" "terraform_sa" {
 resource "google_service_account_iam_member" "workload_identity_user_binding" {
   service_account_id = google_service_account.terraform_sa.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/projects/${var.gcp_project_number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.okta_pool.workload_identity_pool_id}/attribute.email/hnawar@google.com"
+  member             = "principalSet://iam.googleapis.com/projects/${var.gcp_project_number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.okta_pool.workload_identity_pool_id}/providers/${google_iam_workload_identity_pool_provider.okta_provider.workload_identity_pool_provider_id}"
 }
 
 # 5. Grant necessary permissions to the Service Account
