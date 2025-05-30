@@ -1,5 +1,7 @@
 # main.tf
 
+# See public documentation at: https://cloud.google.com/iam/docs/workforce-sign-in-okta
+
 # Configure the Google Cloud Provider
 # Ensure you have authenticated with GCP and set your project appropriately,
 # typically via gcloud CLI or environment variables.
